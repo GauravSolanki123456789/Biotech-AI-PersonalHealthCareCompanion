@@ -1,0 +1,3 @@
+patient_id,age,condition,clinical_score,treatment_plan
+P001,45,Hypertension,7.2,ACE inhibitor therapy
+P002,62,Type 2 diabetes,6.1,Metformin and lifestyle counseling
