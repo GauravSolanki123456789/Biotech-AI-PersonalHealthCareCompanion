@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2, Loader2, UploadCloud } from "lucide-react";
 
 import { ApiError, uploadCsv } from "@/lib/api";
+import { getLocalRecordCount } from "@/lib/patient-records-storage";
 import type { UploadColumnErrorDetail } from "@/lib/types";
 
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,18 @@ export function UploadPanel() {
   const [columnDetail, setColumnDetail] = useState<UploadColumnErrorDetail | null>(
     null
   );
+  const [localRows, setLocalRows] = useState(0);
+
+  const syncLocalRows = useCallback(() => {
+    setLocalRows(getLocalRecordCount());
+  }, []);
+
+  useEffect(() => {
+    syncLocalRows();
+    const onChange = () => syncLocalRows();
+    window.addEventListener("medlab-records-changed", onChange);
+    return () => window.removeEventListener("medlab-records-changed", onChange);
+  }, [syncLocalRows]);
 
   const resetFeedback = useCallback(() => {
     setMessage(null);
@@ -82,8 +95,10 @@ export function UploadPanel() {
       <CardHeader className="space-y-1">
         <CardTitle className="text-lg">Clinical CSV upload</CardTitle>
         <CardDescription>
-          Posts to <code className="text-xs">/api/upload</code> with form field{" "}
-          <code className="text-xs">file</code>.
+          When a FastAPI backend is reachable, this posts to{" "}
+          <code className="text-xs">/api/upload</code> with field{" "}
+          <code className="text-xs">file</code>. Otherwise the CSV is parsed and
+          stored in this browser for chat.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -113,6 +128,13 @@ export function UploadPanel() {
               </label>
             </div>
           </div>
+
+          {localRows > 0 && (
+            <p className="text-xs text-slate-600">
+              Records available for chat in this browser:{" "}
+              <span className="font-mono font-medium text-slate-800">{localRows}</span>
+            </p>
+          )}
 
           <div className="flex flex-wrap items-center gap-3">
             <Button

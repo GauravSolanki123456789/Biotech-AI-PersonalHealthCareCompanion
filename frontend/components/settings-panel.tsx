@@ -1,8 +1,15 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import { ApiError, fetchHealth, fetchStats, getApiBaseUrl } from "@/lib/api";
+import {
+  ApiError,
+  fetchHealth,
+  fetchStats,
+  getApiBaseUrl,
+  getSavedApiBaseUrl,
+  setSavedApiBaseUrl,
+} from "@/lib/api";
 
 import {
   Card,
@@ -16,20 +23,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function SettingsPanel() {
-  const [base, setBase] = useState(() => getApiBaseUrl());
-  const [saved, setSaved] = useState(false);
+  const [resolved, setResolved] = useState(() => getApiBaseUrl());
+  const [draft, setDraft] = useState(() => getSavedApiBaseUrl() ?? "");
+  const [savedFlash, setSavedFlash] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testOk, setTestOk] = useState<string | null>(null);
   const [testErr, setTestErr] = useState<string | null>(null);
 
-  const refresh = useCallback(() => {
-    setBase(getApiBaseUrl());
+  const refreshResolved = useCallback(() => {
+    setResolved(getApiBaseUrl());
   }, []);
 
+  useEffect(() => {
+    refreshResolved();
+  }, [refreshResolved]);
+
   const copy = async () => {
-    await navigator.clipboard.writeText(base);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
+    await navigator.clipboard.writeText(resolved);
+    setSavedFlash(true);
+    setTimeout(() => setSavedFlash(false), 1500);
+  };
+
+  const persistDraft = () => {
+    const t = draft.trim().replace(/\/$/, "");
+    setSavedApiBaseUrl(t || null);
+    refreshResolved();
+    setTestOk(null);
+    setTestErr(null);
+    setSavedFlash(true);
+    setTimeout(() => setSavedFlash(false), 1200);
   };
 
   const testConnection = async () => {
@@ -47,7 +69,7 @@ export function SettingsPanel() {
       const msg =
         e instanceof ApiError
           ? e.message
-          : "Unable to reach the API. Check CORS and NEXT_PUBLIC_API_URL.";
+          : "Unable to reach the API. Check the URL, HTTPS, and CORS.";
       setTestErr(msg);
     } finally {
       setTesting(false);
@@ -59,28 +81,60 @@ export function SettingsPanel() {
       <CardHeader>
         <CardTitle className="text-lg">API connection</CardTitle>
         <CardDescription>
-          The browser calls the backend directly. Set{" "}
-          <code className="text-xs">NEXT_PUBLIC_API_URL</code> in{" "}
-          <code className="text-xs">.env.local</code> and restart{" "}
-          <code className="text-xs">next dev</code>.
+          On this static site, upload and chat work in the browser when no API is
+          reachable. To use the full FastAPI backend, deploy it (for example
+          Render or Railway), allow CORS for this origin, then save its base URL
+          below. Leave blank to use the build default.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="base">Resolved API base (read-only)</Label>
+          <Label htmlFor="draft">API base URL (saved in this browser)</Label>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Input
-              id="base"
+              id="draft"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="https://your-api.example.com"
+              className="font-mono text-sm"
+              spellCheck={false}
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" onClick={persistDraft}>
+                Save
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setDraft("");
+                  setSavedApiBaseUrl(null);
+                  refreshResolved();
+                  setTestOk(null);
+                  setTestErr(null);
+                }}
+              >
+                Clear saved URL
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="resolved">Resolved API base (read-only)</Label>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              id="resolved"
               readOnly
-              value={base}
+              value={resolved}
               className="font-mono text-sm"
             />
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" onClick={refresh}>
+              <Button type="button" variant="outline" onClick={refreshResolved}>
                 Refresh
               </Button>
               <Button type="button" variant="secondary" onClick={() => void copy()}>
-                {saved ? "Copied" : "Copy"}
+                {savedFlash ? "Copied" : "Copy"}
               </Button>
               <Button
                 type="button"
@@ -92,6 +146,7 @@ export function SettingsPanel() {
             </div>
           </div>
         </div>
+
         {testOk && (
           <p className="text-sm text-emerald-800" role="status">
             {testOk}
@@ -103,8 +158,13 @@ export function SettingsPanel() {
           </p>
         )}
         <p className="text-xs text-slate-500">
-          Default: <code>http://127.0.0.1:8000</code> — must match FastAPI CORS
-          origins.
+          Build default:{" "}
+          <code className="rounded bg-slate-100 px-1">
+            {process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
+              "http://127.0.0.1:8000"}
+          </code>
+          . The backend must list this site&apos;s origin in{" "}
+          <code className="rounded bg-slate-100 px-1">CORS_ORIGINS</code>.
         </p>
       </CardContent>
     </Card>

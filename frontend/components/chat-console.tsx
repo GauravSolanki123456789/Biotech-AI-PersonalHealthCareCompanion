@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Bot, Loader2, Send, User } from "lucide-react";
 
 import { ApiError, postChat } from "@/lib/api";
+import { getLocalRecordCount } from "@/lib/patient-records-storage";
 import { InstrumentCodeBlock } from "@/components/instrument-code-block";
 
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ export function ChatConsole() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [localRows, setLocalRows] = useState(0);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const scrollToBottom = useCallback(() => {
@@ -52,6 +54,13 @@ export function ChatConsole() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, loading, scrollToBottom]);
+
+  useEffect(() => {
+    const sync = () => setLocalRows(getLocalRecordCount());
+    sync();
+    window.addEventListener("medlab-records-changed", sync);
+    return () => window.removeEventListener("medlab-records-changed", sync);
+  }, []);
 
   const send = async () => {
     const q = input.trim();
@@ -102,7 +111,11 @@ export function ChatConsole() {
         <div className="text-sm text-slate-600">
           <span className="font-medium text-slate-900">Clinical Q&amp;A</span>
           <span className="mx-2 text-slate-300">·</span>
-          Retrieval over uploaded CSV mapped to PatientRecord
+          <span>
+            {localRows > 0
+              ? `${localRows} row${localRows === 1 ? "" : "s"} in this browser`
+              : "Upload a CSV to enable answers from your data"}
+          </span>
         </div>
         <div className="flex items-center gap-3">
           <Label
@@ -124,10 +137,9 @@ export function ChatConsole() {
         <div className="space-y-4 px-4 py-4">
           {messages.length === 0 && !loading && (
             <p className="text-center text-sm text-slate-500">
-              Ask concise questions about your uploaded patient rows (conditions,
-              plans, scores). Casual questions are answered without dumping your
-              CSV. Enable Generate Instrument Code for Python snippets grounded in
-              retrieved records.
+              Upload a CSV first. Ask about conditions, scores, or treatment plans.
+              When no API is available, answers use a lightweight browser demo over
+              your saved rows. Enable Generate Instrument Code for Python snippets.
             </p>
           )}
           {messages.map((m, i) => (
@@ -203,7 +215,7 @@ export function ChatConsole() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           <Textarea
             className="min-h-[88px] flex-1 resize-none border-slate-300 bg-slate-50/80 focus-visible:ring-sky-600"
-            placeholder="e.g. List patients with clinical_score above 0.8 — or general chat if OPENAI_API_KEY is set on the server"
+            placeholder="e.g. Which patients have clinical_score above 0.8?"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKeyDown}

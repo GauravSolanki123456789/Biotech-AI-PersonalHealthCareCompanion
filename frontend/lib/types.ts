@@ -1,5 +1,13 @@
 /** Mirrors backend `app/models.py` response shapes. */
 
+export type PatientRecord = {
+  patient_id: string;
+  age: number;
+  condition: string;
+  clinical_score: number;
+  treatment_plan: string;
+};
+
 export type UploadSuccessResponse = {
   message: string;
   records_imported: number;
