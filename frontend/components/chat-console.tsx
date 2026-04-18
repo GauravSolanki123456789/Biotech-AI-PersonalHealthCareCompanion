@@ -124,9 +124,10 @@ export function ChatConsole() {
         <div className="space-y-4 px-4 py-4">
           {messages.length === 0 && !loading && (
             <p className="text-center text-sm text-slate-500">
-              Ask about conditions, treatment plans, or scores from your uploaded
-              records. Enable Generate Instrument Code to request Python snippets
-              for instrument integration (payload includes instrument_mode).
+              Ask concise questions about your uploaded patient rows (conditions,
+              plans, scores). Casual questions are answered without dumping your
+              CSV. Enable Generate Instrument Code for Python snippets grounded in
+              retrieved records.
             </p>
           )}
           {messages.map((m, i) => (
@@ -202,7 +203,7 @@ export function ChatConsole() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           <Textarea
             className="min-h-[88px] flex-1 resize-none border-slate-300 bg-slate-50/80 focus-visible:ring-sky-600"
-            placeholder="Type your question… (Enter to send, Shift+Enter for newline)"
+            placeholder="e.g. List patients with clinical_score above 0.8 — or general chat if OPENAI_API_KEY is set on the server"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKeyDown}

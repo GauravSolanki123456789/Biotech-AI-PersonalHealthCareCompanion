@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 export function UploadPanel() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [recordsImported, setRecordsImported] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +32,7 @@ export function UploadPanel() {
     setRecordsImported(null);
     setError(null);
     setColumnDetail(null);
+    setUploadPct(null);
   }, []);
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,11 +49,16 @@ export function UploadPanel() {
     }
     setLoading(true);
     resetFeedback();
+    setUploadPct(0);
     try {
-      const res = await uploadCsv(file);
+      const res = await uploadCsv(file, (pct) => setUploadPct(pct));
       setMessage(res.message);
-      setRecordsImported(res.records_imported);
+      setRecordsImported(
+        typeof res.records_imported === "number" ? res.records_imported : null,
+      );
+      setUploadPct(100);
     } catch (err) {
+      setUploadPct(null);
       if (err instanceof ApiError) {
         setError(err.message);
         const d = err.detail as UploadColumnErrorDetail | undefined;
@@ -116,7 +123,9 @@ export function UploadPanel() {
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Uploading…
+                  {uploadPct !== null && uploadPct < 100
+                    ? `Sending… ${uploadPct}%`
+                    : "Processing on server…"}
                 </>
               ) : (
                 "Upload to server"
@@ -129,14 +138,32 @@ export function UploadPanel() {
             )}
           </div>
 
-          {message && recordsImported !== null && (
+          {loading && uploadPct !== null && (
+            <div className="space-y-1">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
+                <div
+                  className="h-full bg-sky-600 transition-[width] duration-150 ease-out"
+                  style={{ width: `${uploadPct}%` }}
+                />
+              </div>
+              <p className="text-xs text-slate-500">
+                File transfer can finish quickly; indexing may take a few seconds
+                after that.
+              </p>
+            </div>
+          )}
+
+          {message && (
             <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
               <div>
-                <p className="font-medium">{message}</p>
-                <p className="font-mono text-xs text-emerald-800">
-                  records_imported: {recordsImported}
-                </p>
+                <p className="font-medium">Document uploaded</p>
+                <p className="mt-0.5">{message}</p>
+                {recordsImported !== null && (
+                  <p className="mt-1 font-mono text-xs text-emerald-800">
+                    records_imported: {recordsImported}
+                  </p>
+                )}
               </div>
             </div>
           )}

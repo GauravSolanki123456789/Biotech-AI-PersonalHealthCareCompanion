@@ -19,3 +19,10 @@ export type UploadColumnErrorDetail = {
   expected_columns: string[];
   received_columns: string[];
 };
+
+export type StatsResponse = {
+  status: string;
+  records_indexed: number;
+  embed_model: string;
+  openai_configured: boolean;
+};

@@ -26,7 +26,11 @@ async def upload_csv(file: UploadFile = File(...)) -> UploadSuccessResponse:
         )
 
     rebuild_index(records)
+    n = len(records)
     return UploadSuccessResponse(
-        message="CSV parsed and indexed successfully.",
-        records_imported=len(records),
+        message=(
+            f"Upload complete — {n} patient record{'s' if n != 1 else ''} "
+            "imported and indexed."
+        ),
+        records_imported=n,
     )
