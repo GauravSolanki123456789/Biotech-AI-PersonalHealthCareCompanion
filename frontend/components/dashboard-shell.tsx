@@ -9,7 +9,7 @@ import {
   Settings,
   Upload,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -62,6 +62,12 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [onGitHubPages, setOnGitHubPages] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setOnGitHubPages(window.location.hostname.endsWith("github.io"));
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -116,7 +122,35 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </header>
 
         <main className="flex-1 px-4 py-6 sm:px-8 lg:px-10">
-          <div className="mx-auto max-w-5xl">{children}</div>
+          <div className="mx-auto max-w-5xl space-y-4">
+            {onGitHubPages && (
+              <div
+                className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+                role="status"
+              >
+                <p className="font-medium">GitHub Pages hosting</p>
+                <p className="mt-1 text-amber-900/90">
+                  This site is static HTML and JavaScript. Upload and chat call a
+                  separate FastAPI backend — they only work if you deploy the
+                  backend elsewhere and rebuild this site with{" "}
+                  <code className="rounded bg-amber-100/80 px-1 font-mono text-xs">
+                    NEXT_PUBLIC_API_URL
+                  </code>{" "}
+                  pointing to that server (see Settings). If the UI looked
+                  unstyled before, ensure{" "}
+                  <code className="rounded bg-amber-100/80 px-1 font-mono text-xs">
+                    .nojekyll
+                  </code>{" "}
+                  is present in the published output so{" "}
+                  <code className="rounded bg-amber-100/80 px-1 font-mono text-xs">
+                    _next/
+                  </code>{" "}
+                  assets are not stripped by Jekyll.
+                </p>
+              </div>
+            )}
+            {children}
+          </div>
         </main>
       </div>
     </div>
