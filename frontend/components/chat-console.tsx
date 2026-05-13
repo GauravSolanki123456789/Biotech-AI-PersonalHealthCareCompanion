@@ -30,10 +30,26 @@ function stripOptionalMarkdownFences(text: string): string {
 
 const NOT_FOUND_PREFIX = "Data not found in the uploaded clinical records.";
 
+const NOT_RELATED_SNIPPET = "not related to the uploaded patient data";
+
+/** Must match backend app.rag._INSTRUMENT_REPLY_DELIMITER */
+const INSTRUMENT_REPLY_DELIMITER = "<<<INSTRUMENT_BLOCK>>>";
+
+function splitInstrumentReply(content: string): { prose: string; code: string } | null {
+  if (!content.includes(INSTRUMENT_REPLY_DELIMITER)) return null;
+  const [prose, ...rest] = content.split(INSTRUMENT_REPLY_DELIMITER);
+  return {
+    prose: prose.trim(),
+    code: rest.join(INSTRUMENT_REPLY_DELIMITER).trim(),
+  };
+}
+
 function shouldRenderInstrumentCode(content: string, instrumentMode?: boolean) {
   if (!instrumentMode) return false;
   const t = content.trim();
+  if (t.includes(NOT_RELATED_SNIPPET)) return false;
   if (t.startsWith(NOT_FOUND_PREFIX)) return false;
+  if (t.includes(INSTRUMENT_REPLY_DELIMITER)) return false;
   return true;
 }
 
@@ -100,9 +116,9 @@ export function ChatConsole() {
     <Card className="flex flex-col overflow-hidden border-slate-200 shadow-md">
       <div className="flex flex-col gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-sm text-slate-600">
-          <span className="font-medium text-slate-900">Clinical Q&amp;A</span>
+          <span className="font-medium text-slate-900">Patient spreadsheet Q&amp;A</span>
           <span className="mx-2 text-slate-300">·</span>
-          Retrieval over uploaded CSV mapped to PatientRecord
+          Answers use your uploaded CSV; unrelated questions get a fixed notice
         </div>
         <div className="flex items-center gap-3">
           <Label
@@ -152,14 +168,45 @@ export function ChatConsole() {
                     : "max-w-[85%] rounded-2xl rounded-tl-sm border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-800 shadow-sm"
                 }
               >
-                {shouldRenderInstrumentCode(m.content, m.instrument_mode) ? (
-                  <div className="overflow-hidden rounded-lg">
-                    <InstrumentCodeBlock
-                      code={stripOptionalMarkdownFences(m.content)}
-                    />
-                  </div>
-                ) : (
+                {m.role === "user" ? (
                   <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                ) : (
+                  (() => {
+                    const split = m.instrument_mode
+                      ? splitInstrumentReply(m.content)
+                      : null;
+                    if (split) {
+                      return (
+                        <div className="space-y-3">
+                          <p className="whitespace-pre-wrap break-words">
+                            {split.prose}
+                          </p>
+                          <p className="text-xs font-medium text-slate-500">
+                            Instrument code
+                          </p>
+                          <div className="overflow-hidden rounded-lg">
+                            <InstrumentCodeBlock
+                              code={stripOptionalMarkdownFences(split.code)}
+                            />
+                          </div>
+                        </div>
+                      );
+                    }
+                    if (shouldRenderInstrumentCode(m.content, m.instrument_mode)) {
+                      return (
+                        <div className="overflow-hidden rounded-lg">
+                          <InstrumentCodeBlock
+                            code={stripOptionalMarkdownFences(m.content)}
+                          />
+                        </div>
+                      );
+                    }
+                    return (
+                      <p className="whitespace-pre-wrap break-words">
+                        {m.content}
+                      </p>
+                    );
+                  })()
                 )}
               </div>
               {m.role === "user" && (
