@@ -29,15 +29,17 @@ const nav = [
 ];
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "/";
+  const path = pathname.replace(/\/+$/, "") || "/";
 
   return (
     <nav className="flex flex-col gap-1 px-2">
       {nav.map((item) => {
         const active =
           item.href === "/"
-            ? pathname === "/"
-            : pathname.startsWith(item.href);
+            ? path === "/"
+            : path === item.href.replace(/\/+$/, "") ||
+              path.startsWith(`${item.href.replace(/\/+$/, "")}/`);
         const Icon = item.icon;
         return (
           <Link
